@@ -1,0 +1,4 @@
+com/paymentpipeline/shared/avro/PaymentEvent.class
+com/paymentpipeline/shared/Topics.class
+com/paymentpipeline/shared/PaymentStatus.class
+com/paymentpipeline/shared/avro/PaymentEvent$Builder.class

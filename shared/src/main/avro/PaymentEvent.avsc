@@ -1,0 +1,20 @@
+{
+  "namespace": "com.paymentpipeline.shared.avro",
+  "type": "record",
+  "name": "PaymentEvent",
+  "fields": [
+    { "name": "eventId",      "type": "string" },
+    { "name": "paymentId",    "type": "string" },
+    { "name": "merchantId",   "type": "string" },
+    { "name": "eventType",    "type": "string" },
+    { "name": "status",       "type": "string" },
+    { "name": "amount",       "type": "string",
+      "doc": "String to preserve NUMERIC precision" },
+    { "name": "currency",     "type": "string" },
+    { "name": "occurredAt",   "type": "long",
+      "logicalType": "timestamp-millis" },
+    { "name": "failureReason",
+      "type": ["null", "string"],
+      "default": null }
+  ]
+}
