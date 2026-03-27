@@ -1,4 +1,5 @@
 /Users/stupid/OpenSource/payment-pipeline/consumer-stubs/src/main/java/com/paymentpipeline/consumer/ConsumerApplication.java
+/Users/stupid/OpenSource/payment-pipeline/consumer-stubs/src/main/java/com/paymentpipeline/consumer/config/KafkaConsumerConfig.java
 /Users/stupid/OpenSource/payment-pipeline/consumer-stubs/src/main/java/com/paymentpipeline/consumer/fraud/FraudConsumer.java
 /Users/stupid/OpenSource/payment-pipeline/consumer-stubs/src/main/java/com/paymentpipeline/consumer/idempotency/ProcessedEvent.java
 /Users/stupid/OpenSource/payment-pipeline/consumer-stubs/src/main/java/com/paymentpipeline/consumer/idempotency/ProcessedEventId.java

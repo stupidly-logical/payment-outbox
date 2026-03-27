@@ -1,4 +1,5 @@
 /Users/stupid/OpenSource/payment-pipeline/payment-service/src/main/java/com/paymentpipeline/PaymentServiceApplication.java
+/Users/stupid/OpenSource/payment-pipeline/payment-service/src/main/java/com/paymentpipeline/api/GlobalExceptionHandler.java
 /Users/stupid/OpenSource/payment-pipeline/payment-service/src/main/java/com/paymentpipeline/api/PaymentController.java
 /Users/stupid/OpenSource/payment-pipeline/payment-service/src/main/java/com/paymentpipeline/api/PaymentRequest.java
 /Users/stupid/OpenSource/payment-pipeline/payment-service/src/main/java/com/paymentpipeline/api/PaymentResponse.java

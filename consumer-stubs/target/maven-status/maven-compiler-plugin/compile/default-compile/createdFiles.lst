@@ -1,4 +1,5 @@
 com/paymentpipeline/consumer/ledger/LedgerConsumer.class
+com/paymentpipeline/consumer/config/KafkaConsumerConfig.class
 com/paymentpipeline/consumer/notification/NotificationConsumer.class
 com/paymentpipeline/consumer/idempotency/ProcessedEventRepository.class
 com/paymentpipeline/consumer/ConsumerApplication.class
