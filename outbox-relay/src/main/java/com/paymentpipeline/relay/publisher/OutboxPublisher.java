@@ -4,10 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paymentpipeline.outbox.OutboxEvent;
 import com.paymentpipeline.shared.Topics;
 import com.paymentpipeline.shared.avro.PaymentEvent;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 @Component
 public class OutboxPublisher {
@@ -25,10 +27,14 @@ public class OutboxPublisher {
         PaymentEvent avroEvent = toAvro(event);
 
         // Partition key = paymentId → ordering guaranteed per payment
-        kafkaTemplate.send(Topics.PAYMENT_EVENTS,
-                        event.getPaymentId().toString(),
-                        avroEvent)
-                .get(); // block to get Kafka ACK before marking published
+        try {
+            kafkaTemplate.send(Topics.PAYMENT_EVENTS,
+                            event.getPaymentId().toString(),
+                            avroEvent)
+                    .get(); // block to get Kafka ACK before marking published
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void publishToDlt(OutboxEvent event) {

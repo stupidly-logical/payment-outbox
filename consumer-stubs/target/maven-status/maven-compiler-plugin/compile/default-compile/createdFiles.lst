@@ -1,0 +1,7 @@
+com/paymentpipeline/consumer/ledger/LedgerConsumer.class
+com/paymentpipeline/consumer/notification/NotificationConsumer.class
+com/paymentpipeline/consumer/idempotency/ProcessedEventRepository.class
+com/paymentpipeline/consumer/ConsumerApplication.class
+com/paymentpipeline/consumer/idempotency/ProcessedEvent.class
+com/paymentpipeline/consumer/idempotency/ProcessedEventId.class
+com/paymentpipeline/consumer/fraud/FraudConsumer.class

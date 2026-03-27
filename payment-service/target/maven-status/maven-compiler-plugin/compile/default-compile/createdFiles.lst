@@ -3,6 +3,7 @@ com/paymentpipeline/domain/Payment$Builder.class
 com/paymentpipeline/api/PaymentResponse.class
 com/paymentpipeline/api/PaymentController.class
 com/paymentpipeline/domain/Payment.class
+com/paymentpipeline/PaymentServiceApplication.class
 com/paymentpipeline/outbox/OutboxEvent.class
 com/paymentpipeline/repository/PaymentRepository.class
 com/paymentpipeline/service/PaymentNotFoundException.class
