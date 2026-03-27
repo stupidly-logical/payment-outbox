@@ -16,41 +16,10 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  # ── 1. Build fat JARs ───────────────────────────────────────────────────────
-  build:
-    name: Build JARs
-    runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tag }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: temurin
-          cache: maven
-
-      - name: Package
-        run: mvn clean package -DskipTests -B
-
-      - name: Set image tag
-        id: meta
-        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload JARs
-        uses: actions/upload-artifact@v4
-        with:
-          name: jars-${{ github.sha }}
-          path: '**/target/*-exec.jar'
-          retention-days: 3
-
-  # ── 2. Build & push Docker images ──────────────────────────────────────────
+  # ── Build & push Docker images ──────────────────────────────────────────────
   docker:
     name: Docker — ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: build
     permissions:
       contents: read
       packages: write
@@ -60,12 +29,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download JARs
-        uses: actions/download-artifact@v4
-        with:
-          name: jars-${{ needs.build.outputs.image-tag }}
-          # restores paths as uploaded — e.g. payment-service/target/*-exec.jar
 
       - uses: docker/setup-buildx-action@v3
 
@@ -87,14 +50,15 @@ jobs:
       - name: Build & push
         uses: docker/build-push-action@v5
         with:
-          context: ./${{ matrix.service }}
+          context: .
+          file: ./${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  # ── 3. Deploy to staging ────────────────────────────────────────────────────
+  # ── Deploy to staging ────────────────────────────────────────────────────────
   # Template shown for Kubernetes (kubectl). Swap for ECS/Helm/Fly/etc.
   #
   # deploy-staging:
@@ -112,17 +76,17 @@ jobs:
   #     - name: Roll out new image
   #       env:
   #         KUBECONFIG: /tmp/kube.yaml
-  #         IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+  #         IMAGE_TAG: sha-${{ github.sha }}
   #       run: |
   #         kubectl set image deployment/payment-service \
-  #           payment-service=${{ env.REGISTRY }}/${{ github.repository }}/payment-service:sha-$IMAGE_TAG
+  #           payment-service=${{ env.REGISTRY }}/${{ github.repository }}/payment-service:$IMAGE_TAG
   #         kubectl set image deployment/outbox-relay \
-  #           outbox-relay=${{ env.REGISTRY }}/${{ github.repository }}/outbox-relay:sha-$IMAGE_TAG
+  #           outbox-relay=${{ env.REGISTRY }}/${{ github.repository }}/outbox-relay:$IMAGE_TAG
   #         kubectl set image deployment/consumer-stubs \
-  #           consumer-stubs=${{ env.REGISTRY }}/${{ github.repository }}/consumer-stubs:sha-$IMAGE_TAG
+  #           consumer-stubs=${{ env.REGISTRY }}/${{ github.repository }}/consumer-stubs:$IMAGE_TAG
   #         kubectl rollout status deployment/payment-service --timeout=120s
 
-  # ── 4. Deploy to production (manual gate) ──────────────────────────────────
+  # ── Deploy to production (manual gate) ──────────────────────────────────────
   #
   # deploy-production:
   #   name: Deploy → production
