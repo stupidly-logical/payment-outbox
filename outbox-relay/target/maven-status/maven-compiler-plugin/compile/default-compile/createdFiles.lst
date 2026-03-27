@@ -1,4 +1,0 @@
-com/paymentpipeline/relay/poller/OutboxPoller.class
-com/paymentpipeline/relay/OutboxRelayApplication.class
-com/paymentpipeline/relay/publisher/OutboxPublisher.class
-com/paymentpipeline/relay/config/KafkaConfig.class

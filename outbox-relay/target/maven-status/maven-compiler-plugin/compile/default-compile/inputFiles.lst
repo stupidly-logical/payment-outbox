@@ -1,4 +1,0 @@
-/Users/stupid/OpenSource/payment-pipeline/outbox-relay/src/main/java/com/paymentpipeline/relay/OutboxRelayApplication.java
-/Users/stupid/OpenSource/payment-pipeline/outbox-relay/src/main/java/com/paymentpipeline/relay/config/KafkaConfig.java
-/Users/stupid/OpenSource/payment-pipeline/outbox-relay/src/main/java/com/paymentpipeline/relay/poller/OutboxPoller.java
-/Users/stupid/OpenSource/payment-pipeline/outbox-relay/src/main/java/com/paymentpipeline/relay/publisher/OutboxPublisher.java
