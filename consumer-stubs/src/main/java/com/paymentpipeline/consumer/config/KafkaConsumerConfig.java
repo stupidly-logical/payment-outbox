@@ -3,6 +3,7 @@ package com.paymentpipeline.consumer.config;
 import com.paymentpipeline.shared.avro.PaymentEvent;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +12,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,24 +29,41 @@ public class KafkaConsumerConfig {
     private String schemaRegistryUrl;
 
     @Bean
-    public ConsumerFactory<String, PaymentEvent> consumerFactory() {
+    public ConsumerFactory<String, PaymentEvent> consumerFactory(MeterRegistry meterRegistry) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-        props.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-        props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        return new DefaultKafkaConsumerFactory<>(props);
+
+        // Wrap deserializers in ErrorHandlingDeserializer
+        // so corrupt/old messages are skipped rather than crashing the consumer
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                ErrorHandlingDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS,
+                StringDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS,
+                KafkaAvroDeserializer.class);
+        props.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                schemaRegistryUrl);
+        props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG,
+                true);
+
+        DefaultKafkaConsumerFactory<String, PaymentEvent> factory =
+                new DefaultKafkaConsumerFactory<>(props);
+
+        // This wires Kafka consumer metrics into Micrometer
+        factory.addListener(new MicrometerConsumerListener<>(meterRegistry));
+        return factory;
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, PaymentEvent>
-    kafkaListenerContainerFactory() {
+    kafkaListenerContainerFactory(ConsumerFactory<String, PaymentEvent> consumerFactory) {
         ConcurrentKafkaListenerContainerFactory<String, PaymentEvent> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
+        factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(
                 ContainerProperties.AckMode.RECORD  // commit after each record processed
         );

@@ -51,6 +51,11 @@ management:
     export:
       prometheus:
         enabled: true
+    enable:
+      kafka: true
+  endpoint:
+    metrics:
+      enabled: true
 
 logging:
   level:
