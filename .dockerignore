@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+docs
+*.md
+**/src
+**/target/surefire-reports
+**/target/maven-status
+**/target/generated-sources
+# keep target/*-exec.jar — that's what the Dockerfile COPYs
