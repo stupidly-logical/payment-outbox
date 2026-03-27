@@ -9,6 +9,8 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
 
   jpa:
     hibernate:
@@ -20,16 +22,21 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    table: flyway_schema_history_consumers   # separate history table from payment-service
+    baseline-on-migrate: true    # allows migration into a non-empty schema
+    baseline-version: 0          # baseline at version 0 so V1 still runs
 
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
+      group-id: payment-consumers   # default — overridden per listener
       auto-offset-reset: earliest
+      enable-auto-commit: false      # manual offset commit via Spring Kafka
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         schema.registry.url: http://localhost:8081
-        specific.avro.reader: true
+        specific.avro.reader: true   # deserialize into generated PaymentEvent class
 
   threads:
     virtual:
@@ -44,3 +51,14 @@ management:
     export:
       prometheus:
         enabled: true
+
+logging:
+  level:
+    com.paymentpipeline: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{ISO8601} %-5level [%thread] %logger{36} - %msg%n"
+
+
+server:
+  port: 8083

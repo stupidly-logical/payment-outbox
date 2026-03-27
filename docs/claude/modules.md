@@ -22,7 +22,7 @@ Entry point: `PaymentServiceApplication`
 | `OutboxEventRepository` | `findPendingEventsForUpdate(batchSize)` — native SQL, `FOR UPDATE SKIP LOCKED` |
 | `PaymentRepository` | `findByIdempotencyKey()` for idempotent payment creation |
 
-**Schema migrations:** `V2__create_outbox_events.sql`, `V3__create_processed_events.sql`
+**Schema migrations:** `V2__create_outbox_events.sql`, `V1__create_processed_events.sql`
 (Note: `V1__create_payments.sql` is in `consumer-stubs` — Flyway applies in version order across whichever service runs it first against the shared DB.)
 
 ## outbox-relay (port 8085)

@@ -23,6 +23,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    table: flyway_schema_history_payments    # explicit name for payment-service
 
   threads:
     virtual:

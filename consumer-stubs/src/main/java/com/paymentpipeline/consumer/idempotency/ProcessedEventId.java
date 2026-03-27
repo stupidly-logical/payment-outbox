@@ -1,5 +1,6 @@
 package com.paymentpipeline.consumer.idempotency;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
@@ -7,7 +8,10 @@ import java.util.Objects;
 @Embeddable
 public class ProcessedEventId implements Serializable {
 
+    @Column(name = "event_id", length = 255)
     private String eventId;
+
+    @Column(name = "consumer_group", length = 100)
     private String consumerGroup;
 
     public ProcessedEventId() {}
