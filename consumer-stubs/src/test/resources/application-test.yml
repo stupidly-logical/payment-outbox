@@ -1,0 +1,22 @@
+# Overrides for consumer-stubs integration tests
+spring:
+  # Consumer-stubs owns the processed_events migration.
+  # baseline-on-migrate lets V1 run in a fresh schema.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: flyway_schema_history_consumers
+    baseline-on-migrate: true
+    baseline-version: 0
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  kafka:
+    consumer:
+      # Short poll timeout and quick session timeout for faster test feedback
+      properties:
+        session.timeout.ms: 6000
+        heartbeat.interval.ms: 2000
+        max.poll.interval.ms: 10000

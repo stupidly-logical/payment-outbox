@@ -11,6 +11,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +21,10 @@ public class LedgerConsumer {
     private static final Logger log = LoggerFactory.getLogger(LedgerConsumer.class);
     private static final String GROUP = "ledger-consumers";
 
-    private final ProcessedEventRepository processedEventRepository;
-
-    public LedgerConsumer(ProcessedEventRepository processedEventRepository) {
-        this.processedEventRepository = processedEventRepository;
-    }
+    // Field injection is required so that @SpyBean on ProcessedEventRepository
+    // is re-injected into this bean after the Spring test context is loaded.
+    @Autowired
+    ProcessedEventRepository processedEventRepository;
 
     @RetryableTopic(
             attempts = "3",

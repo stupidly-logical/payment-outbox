@@ -1,0 +1,15 @@
+# Overrides for outbox-relay integration tests
+spring:
+  # Enable Flyway so the test DB gets the payments + outbox_events schema.
+  # payment-service's migration files are on the classpath (it is a dependency).
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: flyway_schema_history_payments
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  # Scheduling is intentionally NOT enabled here; tests call OutboxPoller.poll()
+  # directly so there are no timing races during setup / teardown.

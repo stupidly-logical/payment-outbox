@@ -202,6 +202,76 @@ java -jar consumer-stubs/target/consumer-stubs-*-exec.jar
 
 ---
 
+## Testing
+
+The test suite is self-contained — no running Docker Compose infrastructure required. All containers (PostgreSQL, Redpanda) are managed by **Testcontainers** and started automatically.
+
+### Run All Tests
+
+```bash
+mvn test
+```
+
+### Run Per Module
+
+```bash
+mvn test -pl payment-service    # 10 tests — domain + service layer
+mvn test -pl outbox-relay       # 6 tests  — outbox polling and Kafka publish
+mvn test -pl consumer-stubs     # 4 tests  — consumer idempotency
+```
+
+### Test Architecture
+
+Each module has a shared abstract base class that owns the Testcontainers lifecycle:
+
+| Module | Base Class | Containers |
+|---|---|---|
+| `payment-service` | `AbstractIntegrationTest` | PostgreSQL 16 |
+| `outbox-relay` | `AbstractRelayIntegrationTest` | PostgreSQL 16, Redpanda |
+| `consumer-stubs` | `AbstractConsumerIntegrationTest` | PostgreSQL 16, Redpanda |
+
+Redpanda's **built-in Schema Registry** is used instead of a separate `cp-schema-registry` container — simpler setup, no Docker networking complexity.
+
+### Test Suites
+
+#### `payment-service` — 10 tests
+
+| Test Class | Tests |
+|---|---|
+| `PaymentStateMachineTest` | Pure unit — all valid/invalid transitions, terminal states (`@ParameterizedTest`) |
+| `PaymentServiceIntegrationTest` | Atomic outbox write, idempotency key, per-transition events, illegal transition rejection, `failPayment`, optimistic locking with `CountDownLatch` |
+
+#### `outbox-relay` — 6 tests (`OutboxRelayIntegrationTest`)
+
+> `@EnableScheduling` is **disabled** in the test context (`TestOutboxRelayApplication`). Tests call `OutboxPoller.poll()` directly for full determinism — no timing races.
+
+| Test | What it proves |
+|---|---|
+| `poll_shouldPublishPendingEventsToKafka` | Happy path: PENDING → PUBLISHED, message on topic, partition key = paymentId |
+| `poll_shouldMarkEventPublished_onlyAfterKafkaAck` | `.get()` semantics: status only flips after broker ACK |
+| `poll_withKafkaFailure_shouldIncrementRetryCountAndStayPending` | `@SpyBean` forces publish failure; retry_count increments, status stays PENDING |
+| `poll_afterMaxRetries_shouldRouteToDeadLetterTopic` | event at retry_count=2 → one more failure → FAILED + message on DLT |
+| `poll_skipLocked_concurrentPollers_shouldNotDuplicatePublish` | Two concurrent `poll()` calls on 10 events → exactly 10 Kafka messages, no duplicates |
+| `relay_restartAfterCrash_shouldResumeFromUnpublishedEvents` | Partial batch publish, spy reset ("restart"), second poll completes all 5 events |
+
+#### `consumer-stubs` — 4 tests (`ConsumerIdempotencyIntegrationTest`)
+
+| Test | What it proves |
+|---|---|
+| `ledgerConsumer_shouldProcessEventExactlyOnce` | Same eventId published twice → exactly one `processed_events` row |
+| `allThreeConsumers_shouldProcessSameEventIndependently` | One event → three rows, one per consumer group |
+| `consumer_onProcessingFailure_shouldRetryAndRouteToDLT` | `@SpyBean` forces consumer throws → `@RetryableTopic` exhausts retries → message on DLT |
+| `consumer_afterRestart_shouldNotReprocessAlreadyProcessedEvents` | `@DirtiesContext` + offset reset → idempotency prevents double insertion |
+
+### Key Testing Decisions
+
+- **`@SpyBean OutboxPublisher`** simulates Kafka failures in relay tests without stopping the shared Redpanda container.
+- **`Propagation.NOT_SUPPORTED`** on the optimistic-locking test allows concurrent threads to hold independent DB transactions.
+- **Awaitility** is used for all async assertions — `Thread.sleep()` is never used.
+- **`@BeforeEach` table cleanup** ensures test isolation without `@Transactional` rollback, which would hide cross-thread visibility issues.
+
+---
+
 ## API Reference
 
 All endpoints on `localhost:8080`.
@@ -267,5 +337,5 @@ Key metric: **`outbox.pending.count`** — tracks unpublished event backlog. Spi
 | Messaging | Redpanda (Kafka-compatible) + Confluent Schema Registry |
 | Serialization | Apache Avro 1.11 |
 | Metrics | Micrometer + Prometheus + Grafana |
-| Testing | Testcontainers + Spring Kafka Test |
+| Testing | JUnit 5, Testcontainers 1.19.8, Awaitility, Mockito (`@SpyBean`) |
 | Build | Maven (multi-module) |

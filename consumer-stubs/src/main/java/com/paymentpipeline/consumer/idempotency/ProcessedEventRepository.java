@@ -7,4 +7,6 @@ public interface ProcessedEventRepository
 
     boolean existsByIdEventIdAndIdConsumerGroup(
             String eventId, String consumerGroup);
+
+    long countByIdConsumerGroup(String consumerGroup);
 }
