@@ -1,5 +1,7 @@
 # Payment Pipeline
 
+![CI](https://github.com/stupidly-logical/payment-outbox/actions/workflows/ci.yml/badge.svg)
+
 A distributed, event-driven payment processing system built on the **Transactional Outbox Pattern**. Guarantees exactly-once event delivery and idempotent consumer processing using Kafka (Redpanda), PostgreSQL, and Spring Boot 3.
 
 ---
@@ -272,6 +274,16 @@ Redpanda's **built-in Schema Registry** is used instead of a separate `cp-schema
 
 ---
 
+### Load test
+
+Run: `./load-test.sh`
+
+Sends 100 RPS for 30 seconds (3000 total requests).
+
+Verifies: `outbox_pending_count` spikes and recovers to 0, all 3000 payments created with status `INITIATED`, no events lost. Results vary by machine — architecture supports horizontal scaling for higher throughput.
+
+---
+
 ## API Reference
 
 All endpoints on `localhost:8080`.
@@ -339,3 +351,12 @@ Key metric: **`outbox.pending.count`** — tracks unpublished event backlog. Spi
 | Metrics | Micrometer + Prometheus + Grafana |
 | Testing | JUnit 5, Testcontainers 1.19.8, Awaitility, Mockito (`@SpyBean`) |
 | Build | Maven (multi-module) |
+
+---
+
+### Extension ideas
+
+- **Debezium CDC:** replace the `@Scheduled` poller with a Debezium connector reading PostgreSQL WAL — eliminates polling latency entirely
+- **Schema evolution:** add an optional `correlationId` field to `PaymentEvent.avsc` and verify backward compatibility with existing consumers
+- **Horizontal relay scaling:** run 3 `outbox-relay` instances simultaneously and verify `SKIP LOCKED` prevents duplicate publishing
+- **Kafka Streams:** add a topology that aggregates payment counts by merchant and status in real time

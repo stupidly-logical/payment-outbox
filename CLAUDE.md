@@ -1,37 +1,49 @@
-# CLAUDE.md — Payment Pipeline
+# payment-outbox — Claude Code context
 
-Agentic guidance for this repo. Read the relevant section before making changes.
+## Project structure
+Four Maven modules: shared → payment-service → outbox-relay → consumer-stubs
+shared must build first (other modules depend on it).
+payment-service uses classifier=exec to produce both a plain jar
+(importable by outbox-relay) and a fat executable jar.
 
-## Quick Reference
+## Build commands
+mvn clean install -DskipTests     # build all, skip tests
+mvn clean install                 # build all + run all tests
+mvn test -pl payment-service      # test one module
+mvn test -pl outbox-relay
+mvn test -pl consumer-stubs
+mvn spring-boot:run               # run from inside a module directory
 
-| File | When to read |
-|---|---|
-| [docs/claude/architecture.md](docs/claude/architecture.md) | Understanding data flow, outbox pattern, state machine |
-| [docs/claude/modules.md](docs/claude/modules.md) | Per-module responsibilities, key classes, ports, test files |
-| [docs/claude/patterns.md](docs/claude/patterns.md) | Design patterns, transactional rules, idempotency |
-| [docs/claude/dev.md](docs/claude/dev.md) | Build, run, test commands |
+## Running locally
+1. docker compose up -d           # starts postgres, redpanda, schema-registry,
+                                  # prometheus, grafana
+2. cd payment-service && mvn spring-boot:run    # port 8080
+3. cd outbox-relay && mvn spring-boot:run       # port 8085
+4. cd consumer-stubs && mvn spring-boot:run     # port 8083
 
-## Project Snapshot
+Start payment-service first — it runs Flyway and creates the schema.
+consumer-stubs runs its own Flyway for processed_events only.
+outbox-relay has flyway.enabled=false.
 
-- **Language:** Java 21, Spring Boot 3.3.4, Maven multi-module
-- **4 modules:** `shared` → `payment-service` → `outbox-relay` → `consumer-stubs`
-- **DB:** PostgreSQL 16 with Flyway (schema owned by `payment-service`)
-- **Messaging:** Redpanda (Kafka) + Confluent Schema Registry + Apache Avro
-- **Event contract:** `PaymentEvent.avsc` in `shared/src/main/avro/`
-- **Tests:** JUnit 5, Testcontainers 1.19.8, Awaitility, Mockito — no Docker Compose required
+## Key invariants — never break these
+- PaymentService.initiatePayment() and transitionPayment() MUST write
+  payment + outbox event in the SAME @Transactional method.
+  Splitting them breaks the atomic delivery guarantee.
+- OutboxPoller MUST call kafkaTemplate.send().get() — never fire-and-forget.
+  Without .get(), events can be marked PUBLISHED before Kafka stores them.
+- OutboxEvent status moves only: PENDING → PUBLISHED or PENDING → FAILED.
+  Never delete outbox rows — they are the audit trail and enable replay.
+- Consumer listeners MUST check processed_events BEFORE processing
+  and insert AFTER. Swapping the order breaks idempotency.
+- PaymentStatus.canTransitionTo() is the single source of truth for
+  valid transitions. Never add transition logic elsewhere.
 
-## Non-Negotiable Rules
-
-1. **Never split the payment + outbox write across transactions.** Both must be in one `@Transactional` block — this is the outbox guarantee.
-2. **Schema migrations go only in `payment-service/src/main/resources/db/migration/`.** `outbox-relay` sets `flyway.enabled=false` in production (enabled in `application-test.yml` for tests). `consumer-stubs` runs its own migration only for `processed_events`.
-3. **Consumer idempotency check must happen before processing, save after.** The composite key `(eventId, consumerGroup)` in `processed_events` prevents duplicate work.
-4. **PaymentStatus transitions are enforced by `canTransitionTo()`.** Do not bypass this in service code.
-5. **Avro amount field is a String** — preserves `NUMERIC(19,4)` precision. Never use double/float.
-
-## Test Rules
-
-6. **`TestOutboxRelayApplication` omits `@EnableScheduling`.** Relay integration tests call `OutboxPoller.poll()` directly — never rely on scheduler timing in tests.
-7. **Use `@SpyBean` to simulate failures, not container restart.** Stopping a shared static Testcontainers container breaks test isolation. Spy the `OutboxPublisher` instead.
-8. **Async assertions use Awaitility only.** `Thread.sleep()` is banned in tests.
-9. **`Propagation.NOT_SUPPORTED` is required for concurrent tests.** The optimistic-locking test must run outside any test-managed transaction so threads see committed data.
-10. **Each test module has its own `AbstractXxxIntegrationTest`.** Static containers and `@DynamicPropertySource` are defined there — never duplicated in concrete test classes.
+## Common failure modes and fixes
+- "Cannot find main class" → create Application.java in module root package
+- "Unsupported Database PostgreSQL 16" → add flyway-database-postgresql dep
+- "Unknown magic byte" → stale Kafka messages from before schema registry
+  was running. Delete and recreate the payments.events topic.
+- "relation X already exists" → Flyway history table mismatch.
+  Drop flyway_schema_history_* tables and restart.
+- Schema registry connection refused → outbox-relay and schema-registry
+  both default to port 8081. Set server.port=8085 in outbox-relay.
