@@ -1,6 +1,6 @@
 # Payment Pipeline
 
-![CI](https://github.com/stupidly-logical/payment-outbox/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/stupidly-logical/payment-outbox/actions/workflows/ci.yml/badge.svg)](https://github.com/stupidly-logical/payment-outbox/actions/workflows/ci.yml)
 
 A distributed, event-driven payment processing system built on the **Transactional Outbox Pattern**. Guarantees exactly-once event delivery and idempotent consumer processing using Kafka (Redpanda), PostgreSQL, and Spring Boot 3.
 
